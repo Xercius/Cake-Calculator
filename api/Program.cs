@@ -161,7 +161,7 @@ app.MapDelete("/api/cakes/{id}", async (int id, CakeDbContext db) =>
 });
 
 // Pricing endpoint
-app.MapGet("/api/pricing/{id}", async (int id, string? margins, CakeDbContext db) =>
+app.MapGet("/api/pricing/{id}", async (int id, string? margins, CakeDbContext db, ILogger<Program> logger) =>
 {
     var cake = await db.Cakes.Include(c => c.Template).FirstOrDefaultAsync(c => c.Id == id);
     if (cake is null) return Results.NotFound();
@@ -187,7 +187,10 @@ app.MapGet("/api/pricing/{id}", async (int id, string? margins, CakeDbContext db
                 }
             }
         }
-        catch { }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse base ingredients JSON for template {TemplateId}. Skipping base ingredients in cost calculation.", cake.Template.Id);
+        }
     }
 
     // Add extra ingredients cost
@@ -208,7 +211,10 @@ app.MapGet("/api/pricing/{id}", async (int id, string? margins, CakeDbContext db
                 }
             }
         }
-        catch { }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Failed to parse extra ingredients JSON for cake {CakeId}. Skipping extra ingredients in cost calculation.", cake.Id);
+        }
     }
 
     // Parse margins and calculate prices
