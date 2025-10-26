@@ -31,3 +31,83 @@ export interface PricingResult {
     price: number;
   }[];
 }
+
+export interface CakeType {
+  id: number;
+  name: string;
+  imagePath?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CakeShape {
+  id: number;
+  name: string;
+  imagePath?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CakeSize {
+  id: number;
+  shapeId: number;
+  name: string;
+  dimensions?: string;
+  imagePath?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface Filling {
+  id: number;
+  name: string;
+  imagePath?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface Frosting {
+  id: number;
+  name: string;
+  imagePath?: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CustomSize {
+  diameterIn?: number;
+  lengthIn?: number;
+  widthIn?: number;
+}
+
+export interface PricingPreviewRequest {
+  typeId?: string;
+  shapeId?: string;
+  sizeId?: string;
+  customSize?: CustomSize;
+  layers: number;
+  fillingId?: string;
+  frostingId?: string;
+}
+
+export interface CostBreakdown {
+  ingredients: number;
+  labor: number;
+  overhead: number;
+}
+
+export interface PricingPreviewResponse {
+  costBreakdown: CostBreakdown;
+  totalCost: number;
+  currency: string;
+}
+
+export interface SelectionState {
+  typeId?: string;
+  shapeId?: string;
+  sizeId?: string;
+  customSize?: CustomSize;
+  layers: number;
+  fillingId?: string;
+  frostingId?: string;
+}

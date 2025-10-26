@@ -1,86 +1,106 @@
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import IngredientsPage from './pages/IngredientsPage';
 import TemplatesPage from './pages/TemplatesPage';
 import CakesPage from './pages/CakesPage';
 import PriceSummaryPage from './pages/PriceSummaryPage';
+import NewOrderPage from './pages/NewOrderPage';
 
-type Page = 'ingredients' | 'templates' | 'cakes' | 'pricing';
+const queryClient = new QueryClient();
 
-function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('ingredients');
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'ingredients':
-        return <IngredientsPage />;
-      case 'templates':
-        return <TemplatesPage />;
-      case 'cakes':
-        return <CakesPage />;
-      case 'pricing':
-        return <PriceSummaryPage />;
-      default:
-        return <IngredientsPage />;
-    }
-  };
-
+function Navigation() {
+  const location = useLocation();
+  
+  // Don't show nav on new order page
+  if (location.pathname === '/new') {
+    return null;
+  }
+  
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between">
-            <div className="flex space-x-4">
-              <div className="flex items-center py-5 px-2">
-                <span className="font-bold text-xl text-gray-800">Cake Calculator</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => setCurrentPage('ingredients')}
-                  className={`py-5 px-3 ${
-                    currentPage === 'ingredients'
-                      ? 'text-blue-600 border-b-4 border-blue-600'
-                      : 'text-gray-500 hover:text-blue-600'
-                  } transition duration-300`}
-                >
-                  Ingredients
-                </button>
-                <button
-                  onClick={() => setCurrentPage('templates')}
-                  className={`py-5 px-3 ${
-                    currentPage === 'templates'
-                      ? 'text-blue-600 border-b-4 border-blue-600'
-                      : 'text-gray-500 hover:text-blue-600'
-                  } transition duration-300`}
-                >
-                  Templates
-                </button>
-                <button
-                  onClick={() => setCurrentPage('cakes')}
-                  className={`py-5 px-3 ${
-                    currentPage === 'cakes'
-                      ? 'text-blue-600 border-b-4 border-blue-600'
-                      : 'text-gray-500 hover:text-blue-600'
-                  } transition duration-300`}
-                >
-                  Cakes
-                </button>
-                <button
-                  onClick={() => setCurrentPage('pricing')}
-                  className={`py-5 px-3 ${
-                    currentPage === 'pricing'
-                      ? 'text-blue-600 border-b-4 border-blue-600'
-                      : 'text-gray-500 hover:text-blue-600'
-                  } transition duration-300`}
-                >
-                  Price Summary
-                </button>
-              </div>
+    <nav className="bg-white shadow-lg">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between">
+          <div className="flex space-x-4">
+            <div className="flex items-center py-5 px-2">
+              <span className="font-bold text-xl text-gray-800">Cake Calculator</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Link
+                to="/"
+                className={`py-5 px-3 ${
+                  location.pathname === '/'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                Ingredients
+              </Link>
+              <Link
+                to="/templates"
+                className={`py-5 px-3 ${
+                  location.pathname === '/templates'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                Templates
+              </Link>
+              <Link
+                to="/cakes"
+                className={`py-5 px-3 ${
+                  location.pathname === '/cakes'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                Cakes
+              </Link>
+              <Link
+                to="/pricing"
+                className={`py-5 px-3 ${
+                  location.pathname === '/pricing'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                Price Summary
+              </Link>
+              <Link
+                to="/new"
+                className={`py-5 px-3 ${
+                  location.pathname === '/new'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                New Order
+              </Link>
             </div>
           </div>
         </div>
-      </nav>
-      <main>{renderPage()}</main>
-    </div>
+      </div>
+    </nav>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <div className="min-h-screen bg-gray-100">
+          <Navigation />
+          <main>
+            <Routes>
+              <Route path="/" element={<IngredientsPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/cakes" element={<CakesPage />} />
+              <Route path="/pricing" element={<PriceSummaryPage />} />
+              <Route path="/new" element={<NewOrderPage />} />
+            </Routes>
+          </main>
+        </div>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
