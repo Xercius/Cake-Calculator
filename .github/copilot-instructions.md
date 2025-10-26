@@ -26,7 +26,7 @@ IDE: VS 2022
 - PricingSettings(margins[], roundingRule="ceil-dollar", allowPerQuoteOverride=true)
 
 ## Pricing Rules (must follow)
-- ingredientCost = Σ((template + extras) qty × costPerUnit)  // per-item units, no global conversions
+- ingredientCost = Σ((template + extras) qty × costPerUnit)  // qty and costPerUnit must use the same unit (e.g., grams, pieces); no automatic unit conversions are performed
 - laborCost = Σ(minutes × role.hourlyRate / 60)
 - overheadCost = overheadFixed  // includes packaging and delivery
 - totalCost = ingredientCost + laborCost + overheadCost
