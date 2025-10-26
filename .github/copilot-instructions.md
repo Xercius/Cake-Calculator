@@ -38,7 +38,7 @@ Keep pricing math out of React components. Implement in backend services or a sh
 ## Endpoints
 - CRUD: /api/ingredients, /api/templates, /api/roles, /api/orders
 - GET /api/settings/pricing
-- PUT /api/settings/pricing  // update margins and roundingRule (must stay "ceil-dollar")
+- PUT /api/settings/pricing  // update margins only; roundingRule is always "ceil-dollar" (not editable)
 - GET /api/pricing/{orderId}?margins=0.2,0.4,0.6
   Returns:
   {
