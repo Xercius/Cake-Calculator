@@ -163,7 +163,7 @@ export default function NewOrderPage() {
                   onSelect={(id) => {
                     if (id === 'custom') {
                       setShowCustomSize(true);
-                      setSelection({ ...selection, sizeId: undefined, customSize: {} });
+                      setSelection({ ...selection, sizeId: undefined, customSize: undefined });
                     } else {
                       setShowCustomSize(false);
                       setSelection({ ...selection, sizeId: id.toString(), customSize: undefined });
