@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using CakeCalculatorApi.Data;
 using CakeCalculatorApi.Models;
+using CakeCalculatorApi.DTOs;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -240,6 +241,193 @@ app.MapGet("/api/pricing/{id}", async (int id, string? margins, CakeDbContext db
         TotalCost = totalCost,
         Prices = prices
     });
+});
+
+// Health endpoint
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy" }));
+
+// CakeTypes CRUD
+app.MapGet("/api/caketypes", async (CakeDbContext db) =>
+    await db.CakeTypes.Where(ct => ct.IsActive).OrderBy(ct => ct.SortOrder).ToListAsync());
+
+app.MapGet("/api/caketypes/{id}", async (int id, CakeDbContext db) =>
+    await db.CakeTypes.FindAsync(id) is CakeType cakeType
+        ? Results.Ok(cakeType)
+        : Results.NotFound());
+
+app.MapPost("/api/caketypes", async (CakeType cakeType, CakeDbContext db) =>
+{
+    db.CakeTypes.Add(cakeType);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/caketypes/{cakeType.Id}", cakeType);
+});
+
+// CakeShapes CRUD
+app.MapGet("/api/cakeshapes", async (CakeDbContext db) =>
+    await db.CakeShapes.Where(cs => cs.IsActive).OrderBy(cs => cs.SortOrder).ToListAsync());
+
+app.MapGet("/api/cakeshapes/{id}", async (int id, CakeDbContext db) =>
+    await db.CakeShapes.FindAsync(id) is CakeShape cakeShape
+        ? Results.Ok(cakeShape)
+        : Results.NotFound());
+
+app.MapPost("/api/cakeshapes", async (CakeShape cakeShape, CakeDbContext db) =>
+{
+    db.CakeShapes.Add(cakeShape);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/cakeshapes/{cakeShape.Id}", cakeShape);
+});
+
+// CakeSizes CRUD
+app.MapGet("/api/cakesizes", async (int? shapeId, CakeDbContext db) =>
+{
+    var query = db.CakeSizes.Where(cs => cs.IsActive);
+    if (shapeId.HasValue)
+    {
+        query = query.Where(cs => cs.ShapeId == shapeId.Value);
+    }
+    return await query.OrderBy(cs => cs.SortOrder).ToListAsync();
+});
+
+app.MapGet("/api/cakesizes/{id}", async (int id, CakeDbContext db) =>
+    await db.CakeSizes.FindAsync(id) is CakeSize cakeSize
+        ? Results.Ok(cakeSize)
+        : Results.NotFound());
+
+app.MapPost("/api/cakesizes", async (CakeSize cakeSize, CakeDbContext db) =>
+{
+    db.CakeSizes.Add(cakeSize);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/cakesizes/{cakeSize.Id}", cakeSize);
+});
+
+// Fillings CRUD
+app.MapGet("/api/fillings", async (CakeDbContext db) =>
+    await db.Fillings.Where(f => f.IsActive).OrderBy(f => f.SortOrder).ToListAsync());
+
+app.MapGet("/api/fillings/{id}", async (int id, CakeDbContext db) =>
+    await db.Fillings.FindAsync(id) is Filling filling
+        ? Results.Ok(filling)
+        : Results.NotFound());
+
+app.MapPost("/api/fillings", async (Filling filling, CakeDbContext db) =>
+{
+    db.Fillings.Add(filling);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/fillings/{filling.Id}", filling);
+});
+
+// Frostings CRUD
+app.MapGet("/api/frostings", async (CakeDbContext db) =>
+    await db.Frostings.Where(f => f.IsActive).OrderBy(f => f.SortOrder).ToListAsync());
+
+app.MapGet("/api/frostings/{id}", async (int id, CakeDbContext db) =>
+    await db.Frostings.FindAsync(id) is Frosting frosting
+        ? Results.Ok(frosting)
+        : Results.NotFound());
+
+app.MapPost("/api/frostings", async (Frosting frosting, CakeDbContext db) =>
+{
+    db.Frostings.Add(frosting);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/frostings/{frosting.Id}", frosting);
+});
+
+// Pricing Preview endpoint
+app.MapPost("/api/pricing/preview", async (PricingPreviewRequest request, CakeDbContext db, ILogger<Program> logger) =>
+{
+    try
+    {
+        // Base cost calculation (simplified for now - would use actual ingredient costs in production)
+        decimal ingredientsCost = 0;
+        decimal laborCost = 0;
+        decimal overheadCost = 0;
+
+        // Calculate based on size (using rough estimates)
+        decimal cakeArea = 0;
+        if (!string.IsNullOrEmpty(request.SizeId) && int.TryParse(request.SizeId, out int sizeId))
+        {
+            var cakeSize = await db.CakeSizes.FindAsync(sizeId);
+            if (cakeSize != null && !string.IsNullOrEmpty(cakeSize.Dimensions))
+            {
+                try
+                {
+                    var dims = JsonSerializer.Deserialize<Dictionary<string, decimal>>(cakeSize.Dimensions);
+                    if (dims != null)
+                    {
+                        if (dims.ContainsKey("roundDiameterIn"))
+                        {
+                            var diameter = dims["roundDiameterIn"];
+                            var radius = (double)(diameter / 2);
+                            cakeArea = (decimal)(Math.PI * radius * radius);
+                        }
+                        else if (dims.ContainsKey("lengthIn") && dims.ContainsKey("widthIn"))
+                        {
+                            cakeArea = dims["lengthIn"] * dims["widthIn"];
+                        }
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse dimensions for size {SizeId}", sizeId);
+                }
+            }
+        }
+        else if (request.CustomSize != null)
+        {
+            if (request.CustomSize.DiameterIn.HasValue)
+            {
+                var diameter = request.CustomSize.DiameterIn.Value;
+                var radius = (double)(diameter / 2);
+                cakeArea = (decimal)(Math.PI * radius * radius);
+            }
+            else if (request.CustomSize.LengthIn.HasValue && request.CustomSize.WidthIn.HasValue)
+            {
+                cakeArea = request.CustomSize.LengthIn.Value * request.CustomSize.WidthIn.Value;
+            }
+        }
+
+        // Rough cost per square inch of cake
+        decimal costPerSqIn = 0.50m;
+        ingredientsCost = cakeArea * costPerSqIn * request.Layers;
+
+        // Add cost for filling (if layers > 1)
+        if (request.Layers > 1 && !string.IsNullOrEmpty(request.FillingId))
+        {
+            ingredientsCost += cakeArea * 0.15m * (request.Layers - 1);
+        }
+
+        // Add cost for frosting
+        if (!string.IsNullOrEmpty(request.FrostingId))
+        {
+            ingredientsCost += cakeArea * 0.20m;
+        }
+
+        // Labor: $20/hour base, varies by complexity
+        laborCost = 20m + (cakeArea * 0.10m) + (request.Layers * 5m);
+
+        // Overhead: 30% of ingredients and labor
+        overheadCost = (ingredientsCost + laborCost) * 0.30m;
+
+        var response = new PricingPreviewResponse
+        {
+            CostBreakdown = new CostBreakdown
+            {
+                Ingredients = Math.Round(ingredientsCost, 2),
+                Labor = Math.Round(laborCost, 2),
+                Overhead = Math.Round(overheadCost, 2)
+            },
+            TotalCost = Math.Round(ingredientsCost + laborCost + overheadCost, 2),
+            Currency = "USD"
+        };
+
+        return Results.Ok(response);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error calculating pricing preview");
+        return Results.Problem("Failed to calculate pricing", statusCode: 500);
+    }
 });
 
 app.Run();
