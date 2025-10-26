@@ -43,7 +43,7 @@ export default function CustomSizeInputs({ shapeName, customSize, onChange }: Cu
                 value={customSize?.lengthIn ?? ''}
                 onChange={(e) => 
                   onChange({ 
-                    ...customSize, 
+                    ...(customSize || {}), 
                     lengthIn: parseFloat(e.target.value) || undefined 
                   })
                 }
@@ -63,7 +63,7 @@ export default function CustomSizeInputs({ shapeName, customSize, onChange }: Cu
                 value={customSize?.widthIn ?? ''}
                 onChange={(e) => 
                   onChange({ 
-                    ...customSize, 
+                    ...(customSize || {}), 
                     widthIn: parseFloat(e.target.value) || undefined 
                   })
                 }

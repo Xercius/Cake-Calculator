@@ -333,6 +333,22 @@ app.MapPost("/api/frostings", async (Frosting frosting, CakeDbContext db) =>
     return Results.Created($"/api/frostings/{frosting.Id}", frosting);
 });
 
+// Pricing constants - these would ideally come from configuration or database
+// Cost per square inch of cake base
+const decimal CostPerSquareInch = 0.50m;
+// Cost per square inch for filling layer
+const decimal FillingCostPerSquareInch = 0.15m;
+// Cost per square inch for frosting
+const decimal FrostingCostPerSquareInch = 0.20m;
+// Base labor cost in USD
+const decimal BaseLaborCost = 20m;
+// Labor cost per square inch
+const decimal LaborCostPerSquareInch = 0.10m;
+// Labor cost per layer
+const decimal LaborCostPerLayer = 5m;
+// Overhead percentage (as decimal: 0.30 = 30%)
+const decimal OverheadPercentage = 0.30m;
+
 // Pricing Preview endpoint
 app.MapPost("/api/pricing/preview", async (PricingPreviewRequest request, CakeDbContext db, ILogger<Program> logger) =>
 {
@@ -387,27 +403,26 @@ app.MapPost("/api/pricing/preview", async (PricingPreviewRequest request, CakeDb
             }
         }
 
-        // Rough cost per square inch of cake
-        decimal costPerSqIn = 0.50m;
-        ingredientsCost = cakeArea * costPerSqIn * request.Layers;
+        // Calculate ingredient costs based on cake area
+        ingredientsCost = cakeArea * CostPerSquareInch * request.Layers;
 
         // Add cost for filling (if layers > 1)
         if (request.Layers > 1 && !string.IsNullOrEmpty(request.FillingId))
         {
-            ingredientsCost += cakeArea * 0.15m * (request.Layers - 1);
+            ingredientsCost += cakeArea * FillingCostPerSquareInch * (request.Layers - 1);
         }
 
         // Add cost for frosting
         if (!string.IsNullOrEmpty(request.FrostingId))
         {
-            ingredientsCost += cakeArea * 0.20m;
+            ingredientsCost += cakeArea * FrostingCostPerSquareInch;
         }
 
-        // Labor: $20/hour base, varies by complexity
-        laborCost = 20m + (cakeArea * 0.10m) + (request.Layers * 5m);
+        // Labor: base cost + area complexity + layer complexity
+        laborCost = BaseLaborCost + (cakeArea * LaborCostPerSquareInch) + (request.Layers * LaborCostPerLayer);
 
-        // Overhead: 30% of ingredients and labor
-        overheadCost = (ingredientsCost + laborCost) * 0.30m;
+        // Overhead: percentage of ingredients and labor
+        overheadCost = (ingredientsCost + laborCost) * OverheadPercentage;
 
         var response = new PricingPreviewResponse
         {

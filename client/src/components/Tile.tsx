@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface TileProps {
   id: string | number;
   label: string;
@@ -7,6 +9,8 @@ interface TileProps {
 }
 
 export default function Tile({ id, label, imagePath, selected, onSelect }: TileProps) {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <button
       onClick={() => onSelect(id)}
@@ -23,25 +27,18 @@ export default function Tile({ id, label, imagePath, selected, onSelect }: TileP
       aria-pressed={selected}
     >
       <div className="flex flex-col items-center justify-center h-full w-full p-2">
-        {imagePath ? (
+        {imagePath && !imageError ? (
           <img 
             src={imagePath} 
             alt={label}
             className="w-16 h-16 object-cover mb-2"
-            onError={(e) => {
-              // Show placeholder if image fails to load
-              e.currentTarget.style.display = 'none';
-              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-              if (fallback) fallback.style.display = 'flex';
-            }}
+            onError={() => setImageError(true)}
           />
-        ) : null}
-        <div 
-          className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center mb-2"
-          style={{ display: imagePath ? 'none' : 'flex' }}
-        >
-          <span className="text-2xl text-gray-400">?</span>
-        </div>
+        ) : (
+          <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center mb-2">
+            <span className="text-2xl text-gray-400">?</span>
+          </div>
+        )}
         <span className="text-sm font-medium text-center line-clamp-2">
           {label}
         </span>
