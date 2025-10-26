@@ -1,96 +1,81 @@
 # GitHub Copilot Instructions — Cake Pricing
 
 ## Purpose
-Local-only Cake Pricing app. Compute cost and three suggested prices from ingredients, templates, extras, labor, and other expenses. Educational use. No external paid services.
+Local-only app. Compute cost and three suggested prices from ingredients, templates, extras, labor by role, and fixed per-order overhead (incl. packaging and delivery). Export CSV. No external paid services.
 
 ## Stack
 Backend: .NET 9 ASP.NET Core Web API + EF Core 9 + SQLite
 Frontend: React 19 + Vite + TypeScript
-UI: Tailwind CSS (+ optional shadcn/ui)
+UI: Tailwind (+ optional shadcn/ui)
 Data: TanStack Query
-IDE: Visual Studio 2022
+IDE: VS 2022
 
 ## Structure
-/api → backend (Features/Ingredients, Features/Templates, Features/Cakes, Features/Pricing)
+/api → backend (Features/Ingredients, Templates, Roles, Orders, Pricing, Settings)
 /client → frontend
 
-## Domain (guidance)
-- Ingredient(id, name, unit, costPerUnit, yieldPct?, lossPct?, isActive)
+## Domain
+- Ingredient(id, name, unit, costPerUnit, isActive)
 - Template(id, name, size, type)
 - TemplateIngredient(templateId, ingredientId, qty, unit?)
-- Cake(id, name, templateId, laborHours, laborRate, otherCosts)
-- CakeExtraIngredient(cakeId, ingredientId, qty, unit?)
-- PricingSettings(margins[], roundingRule, minPrice, overheadPct?, packagingFixed?)
+- Role(id, name, hourlyRate)
+- Order(id, templateId, name, date,
+        rolesTime[{roleId, minutes}],
+        extraItems[{ingredientId, qty, unit?}],
+        overheadFixed, yieldLossNotes?)
+- PricingSettings(margins[], roundingRule="ceil-dollar", allowPerQuoteOverride=true)
 
 ## Pricing Rules (must follow)
-- Ingredient unit cost = costPerUnit × (1 / effective_yield), where effective_yield accounts for yieldPct/lossPct if present.
-- Recipe cost = Σ(qty × unit cost) across template + extras.
-- Labor = laborHours × laborRate.
-- Overhead = recipe cost × overheadPct + packagingFixed + otherCosts.
-- Total cost = ingredients + labor + overhead.
-- Prices = apply margins to Total cost → apply roundingRule → enforce minPrice.
+- ingredientCost = Σ((template + extras) qty × costPerUnit)  // qty and costPerUnit must use the same unit (e.g., grams, pieces); no automatic unit conversions are performed
+- laborCost = Σ(minutes × role.hourlyRate / 60)
+- overheadCost = overheadFixed  // includes packaging and delivery
+- totalCost = ingredientCost + laborCost + overheadCost
+- prices = margins.map(m => ceil_to_dollar(totalCost × (1 + m)))
+- No min price. Rounding is always “ceil to next whole dollar.”
 
-Do not put pricing math inside React components. Keep it in backend services or a shared module used by the API.
+Keep pricing math out of React components. Implement in backend services or a shared backend module used by API.
 
 ## Endpoints
-- CRUD: /api/ingredients, /api/templates, /api/cakes
-- GET /api/pricing/{cakeId}?margins=0.2,0.4,0.6
+- CRUD: /api/ingredients, /api/templates, /api/roles, /api/orders
+- GET /api/settings/pricing
+- PUT /api/settings/pricing  // update margins only; roundingRule is always "ceil-dollar" (not editable)
+- GET /api/pricing/{orderId}?margins=0.2,0.4,0.6
   Returns:
   {
-    "costBreakdown": {
-      "ingredients": number,
-      "labor": number,
-      "overhead": number,
-      "totalCost": number
-    },
+    "breakdown": { "ingredients": number, "labor": number, "overhead": number, "totalCost": number },
     "prices": [number, number, number],
-    "inputs": { "margins": [0.2,0.4,0.6], "roundingRule": "nearest-0.25", "minPrice": 25 }
+    "inputs": { "margins": [..], "roundingRule": "ceil-dollar" }
   }
-- GET /api/health
-- GET/PUT /api/settings/pricing
+- GET /api/export/orders.csv
 
 ## Backend Conventions
-- Feature folders with Controllers, Dtos, Mapping, Validation.
-- RESTful naming, async/await, Swagger on dev.
-- CORS allow http://localhost:5173.
-- EF Core migrations included. Seed minimal sample data.
+- Feature folders: Controllers, Dtos, Mapping, Validation.
+- REST, async/await, ProblemDetails, Swagger in dev.
+- EF Core migrations + seed. CORS allow http://localhost:5173.
 
 ## Frontend Guidelines
-- Pages: Ingredients, Templates, Cakes, Price Summary (React Router v7).
-- axios baseURL /api; all fetching via TanStack Query.
-- Tailwind for layout; responsive by default.
-- No business math in components. Display only.
+- Pages: Ingredients, Templates, Roles, Orders, Price Summary.
+- Fetch via TanStack Query; axios baseURL /api.
+- Tailwind layouts. Responsive.
+- Display math only; no pricing logic in UI.
 
 ## Copilot — Do
-1) When implementing or fixing:
-   - Provide a short plan.
-   - Output exact file paths and code edits.
-   - Add or update tests for pricing and controllers.
-   - Include run/verify steps.
-
-2) Keep logic pure and testable:
-   - Pricing service class with unit tests.
-   - Deterministic seed data for snapshot checks.
-
-3) Respect settings:
-   - Use PricingSettings for margins, roundingRule, minPrice, overheadPct, packagingFixed.
+- Provide a short plan, exact file paths, code edits.
+- Add/update tests for pricing and controllers.
+- Include run and verify steps for each change.
+- Use PricingSettings; allow margins override per request.
 
 ## Copilot — Don’t
-- Don’t add external APIs or paid services.
+- Don’t introduce external APIs or paid services.
 - Don’t move pricing math into React.
-- Don’t change defaults or domain unless asked.
+- Don’t change rounding away from “ceil-dollar” unless asked.
 
-## Verification Checklist (always include in PR)
+## Verification Checklist (attach in PR)
 - `dotnet build` and `dotnet test` pass.
-- `pnpm install` and `pnpm dev` start successfully.
-- Sample verification:
-  - Given seed Cake `Sample 8" Round`, GET `/api/pricing/{cakeId}?margins=0.2,0.4,0.6`
-  - Confirm `ingredients + labor + overhead = totalCost`.
-  - Confirm `prices.length === 3` and roundingRule + minPrice applied.
-  - Attach screenshot or paste JSON of the response.
-
-## Example Tasks
-- Implement PricingSettings GET/PUT and persist with EF Core.
-- Add rounding modes: nearest-0.25, nearest-0.50, charm-.99.
-- Add overheadPct and packagingFixed to pricing pipeline with tests.
-- Build Price Summary page consuming `/api/pricing/{cakeId}` with live refresh.
+- `pnpm i` and `pnpm dev` run.
+- Seed an Order and Roles. Call:
+  GET `/api/pricing/{orderId}?margins=0.2,0.4,0.6`
+  Confirm: ingredients + labor + overhead = totalCost.
+  Confirm: prices are whole dollars and ≥ totalCost.
+  Paste JSON response or screenshot.
+- Export check: GET `/api/export/orders.csv` downloads and includes the seeded order.
