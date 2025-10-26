@@ -1,4 +1,16 @@
-import type { Ingredient, Template, Cake, PricingResult } from '../types';
+import type { 
+  Ingredient, 
+  Template, 
+  Cake, 
+  PricingResult,
+  CakeType,
+  CakeShape,
+  CakeSize,
+  Filling,
+  Frosting,
+  PricingPreviewRequest,
+  PricingPreviewResponse
+} from '../types';
 
 const API_BASE = '/api';
 
@@ -126,5 +138,47 @@ export const getPricing = async (id: number, margins?: string): Promise<PricingR
     : `${API_BASE}/pricing/${id}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error('Failed to fetch pricing');
+  return response.json();
+};
+
+// New Order Settings APIs
+export const getCakeTypes = async (): Promise<CakeType[]> => {
+  const response = await fetch(`${API_BASE}/caketypes`);
+  if (!response.ok) throw new Error('Failed to fetch cake types');
+  return response.json();
+};
+
+export const getCakeShapes = async (): Promise<CakeShape[]> => {
+  const response = await fetch(`${API_BASE}/cakeshapes`);
+  if (!response.ok) throw new Error('Failed to fetch cake shapes');
+  return response.json();
+};
+
+export const getCakeSizes = async (shapeId?: number): Promise<CakeSize[]> => {
+  const url = shapeId ? `${API_BASE}/cakesizes?shapeId=${shapeId}` : `${API_BASE}/cakesizes`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch cake sizes');
+  return response.json();
+};
+
+export const getFillings = async (): Promise<Filling[]> => {
+  const response = await fetch(`${API_BASE}/fillings`);
+  if (!response.ok) throw new Error('Failed to fetch fillings');
+  return response.json();
+};
+
+export const getFrostings = async (): Promise<Frosting[]> => {
+  const response = await fetch(`${API_BASE}/frostings`);
+  if (!response.ok) throw new Error('Failed to fetch frostings');
+  return response.json();
+};
+
+export const getPricingPreview = async (request: PricingPreviewRequest): Promise<PricingPreviewResponse> => {
+  const response = await fetch(`${API_BASE}/pricing/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) throw new Error('Failed to get pricing preview');
   return response.json();
 };
