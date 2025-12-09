@@ -39,6 +39,80 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
+// Validation helpers
+static IResult? ValidateRequiredString(string? value, string fieldName, out string? trimmedValue)
+{
+    trimmedValue = value?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedValue))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: $"{fieldName} is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+    return null;
+}
+
+static IResult? ValidateNonNegativeDecimal(decimal value, string fieldName)
+{
+    if (value < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: $"{fieldName} must be greater than or equal to 0",
+            statusCode: 400);
+    }
+    return null;
+}
+
+static IResult? ValidateIngredient(string? name, decimal costPerUnit, out string? trimmedName)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null) return nameValidation;
+
+    return ValidateNonNegativeDecimal(costPerUnit, "CostPerUnit");
+}
+
+static IResult? ValidateTemplate(string? name, string? size, string? type, string? baseIngredients,
+    out string? trimmedName, out string? trimmedSize, out string? trimmedType)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null)
+    {
+        trimmedSize = null;
+        trimmedType = null;
+        return nameValidation;
+    }
+
+    var sizeValidation = ValidateRequiredString(size, "Size", out trimmedSize);
+    if (sizeValidation != null)
+    {
+        trimmedType = null;
+        return sizeValidation;
+    }
+
+    var typeValidation = ValidateRequiredString(type, "Type", out trimmedType);
+    if (typeValidation != null) return typeValidation;
+
+    if (string.IsNullOrWhiteSpace(baseIngredients))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "BaseIngredients is required and cannot be empty",
+            statusCode: 400);
+    }
+
+    return null;
+}
+
+static IResult? ValidateRole(string? name, decimal hourlyRate, out string? trimmedName)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null) return nameValidation;
+
+    return ValidateNonNegativeDecimal(hourlyRate, "HourlyRate");
+}
+
 // Ingredients CRUD
 app.MapGet("/api/ingredients", async (CakeDbContext db) =>
     await db.Ingredients.ToListAsync());
@@ -50,26 +124,10 @@ app.MapGet("/api/ingredients/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/ingredients", async (Ingredient ingredient, CakeDbContext db) =>
 {
-    // Validate Name - required and trimmed
-    var trimmedName = ingredient.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateIngredient(ingredient.Name, ingredient.CostPerUnit, out var trimmedName);
+    if (validationError != null) return validationError;
 
-    // Validate CostPerUnit - must be >= 0
-    if (ingredient.CostPerUnit < 0)
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "CostPerUnit must be greater than or equal to 0",
-            statusCode: 400);
-    }
-
-    ingredient.Name = trimmedName;
+    ingredient.Name = trimmedName!;
     db.Ingredients.Add(ingredient);
     await db.SaveChangesAsync();
     return Results.Created($"/api/ingredients/{ingredient.Id}", ingredient);
@@ -80,26 +138,10 @@ app.MapPut("/api/ingredients/{id}", async (int id, Ingredient inputIngredient, C
     var ingredient = await db.Ingredients.FindAsync(id);
     if (ingredient is null) return Results.NotFound();
 
-    // Validate Name - required and trimmed
-    var trimmedName = inputIngredient.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateIngredient(inputIngredient.Name, inputIngredient.CostPerUnit, out var trimmedName);
+    if (validationError != null) return validationError;
 
-    // Validate CostPerUnit - must be >= 0
-    if (inputIngredient.CostPerUnit < 0)
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "CostPerUnit must be greater than or equal to 0",
-            statusCode: 400);
-    }
-
-    ingredient.Name = trimmedName;
+    ingredient.Name = trimmedName!;
     ingredient.CostPerUnit = inputIngredient.CostPerUnit;
 
     await db.SaveChangesAsync();
@@ -128,48 +170,13 @@ app.MapGet("/api/templates/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/templates", async (Template template, CakeDbContext db) =>
 {
-    // Validate Name - required and trimmed
-    var trimmedName = template.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateTemplate(template.Name, template.Size, template.Type, template.BaseIngredients,
+        out var trimmedName, out var trimmedSize, out var trimmedType);
+    if (validationError != null) return validationError;
 
-    // Validate Size - required and trimmed
-    var trimmedSize = template.Size?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedSize))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Size is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
-
-    // Validate Type - required and trimmed
-    var trimmedType = template.Type?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedType))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Type is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
-
-    // Validate BaseIngredients - required
-    if (string.IsNullOrWhiteSpace(template.BaseIngredients))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "BaseIngredients is required and cannot be empty",
-            statusCode: 400);
-    }
-
-    template.Name = trimmedName;
-    template.Size = trimmedSize;
-    template.Type = trimmedType;
+    template.Name = trimmedName!;
+    template.Size = trimmedSize!;
+    template.Type = trimmedType!;
     db.Templates.Add(template);
     await db.SaveChangesAsync();
     return Results.Created($"/api/templates/{template.Id}", template);
@@ -180,48 +187,13 @@ app.MapPut("/api/templates/{id}", async (int id, Template inputTemplate, CakeDbC
     var template = await db.Templates.FindAsync(id);
     if (template is null) return Results.NotFound();
 
-    // Validate Name - required and trimmed
-    var trimmedName = inputTemplate.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateTemplate(inputTemplate.Name, inputTemplate.Size, inputTemplate.Type, inputTemplate.BaseIngredients,
+        out var trimmedName, out var trimmedSize, out var trimmedType);
+    if (validationError != null) return validationError;
 
-    // Validate Size - required and trimmed
-    var trimmedSize = inputTemplate.Size?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedSize))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Size is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
-
-    // Validate Type - required and trimmed
-    var trimmedType = inputTemplate.Type?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedType))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Type is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
-
-    // Validate BaseIngredients - required
-    if (string.IsNullOrWhiteSpace(inputTemplate.BaseIngredients))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "BaseIngredients is required and cannot be empty",
-            statusCode: 400);
-    }
-
-    template.Name = trimmedName;
-    template.Size = trimmedSize;
-    template.Type = trimmedType;
+    template.Name = trimmedName!;
+    template.Size = trimmedSize!;
+    template.Type = trimmedType!;
     template.BaseIngredients = inputTemplate.BaseIngredients;
 
     await db.SaveChangesAsync();
@@ -464,26 +436,10 @@ app.MapGet("/api/roles/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/roles", async (Role role, CakeDbContext db) =>
 {
-    // Validate Name - required and trimmed
-    var trimmedName = role.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateRole(role.Name, role.HourlyRate, out var trimmedName);
+    if (validationError != null) return validationError;
 
-    // Validate HourlyRate - must be >= 0
-    if (role.HourlyRate < 0)
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "HourlyRate must be greater than or equal to 0",
-            statusCode: 400);
-    }
-
-    role.Name = trimmedName;
+    role.Name = trimmedName!;
     db.Roles.Add(role);
     await db.SaveChangesAsync();
     return Results.Created($"/api/roles/{role.Id}", role);
@@ -494,26 +450,10 @@ app.MapPut("/api/roles/{id}", async (int id, Role inputRole, CakeDbContext db) =
     var role = await db.Roles.FindAsync(id);
     if (role is null) return Results.NotFound();
 
-    // Validate Name - required and trimmed
-    var trimmedName = inputRole.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(trimmedName))
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "Name is required and cannot be empty or whitespace",
-            statusCode: 400);
-    }
+    var validationError = ValidateRole(inputRole.Name, inputRole.HourlyRate, out var trimmedName);
+    if (validationError != null) return validationError;
 
-    // Validate HourlyRate - must be >= 0
-    if (inputRole.HourlyRate < 0)
-    {
-        return Results.Problem(
-            title: "Validation failed",
-            detail: "HourlyRate must be greater than or equal to 0",
-            statusCode: 400);
-    }
-
-    role.Name = trimmedName;
+    role.Name = trimmedName!;
     role.HourlyRate = inputRole.HourlyRate;
 
     await db.SaveChangesAsync();
