@@ -333,6 +333,84 @@ app.MapPost("/api/frostings", async (Frosting frosting, CakeDbContext db) =>
     return Results.Created($"/api/frostings/{frosting.Id}", frosting);
 });
 
+// Roles CRUD
+app.MapGet("/api/roles", async (CakeDbContext db) =>
+    await db.Roles.ToListAsync());
+
+app.MapGet("/api/roles/{id}", async (int id, CakeDbContext db) =>
+    await db.Roles.FindAsync(id) is Role role
+        ? Results.Ok(role)
+        : Results.NotFound());
+
+app.MapPost("/api/roles", async (Role role, CakeDbContext db) =>
+{
+    // Validate Name - required and trimmed
+    var trimmedName = role.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate HourlyRate - must be >= 0
+    if (role.HourlyRate < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "HourlyRate must be greater than or equal to 0",
+            statusCode: 400);
+    }
+
+    role.Name = trimmedName;
+    db.Roles.Add(role);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/roles/{role.Id}", role);
+});
+
+app.MapPut("/api/roles/{id}", async (int id, Role inputRole, CakeDbContext db) =>
+{
+    var role = await db.Roles.FindAsync(id);
+    if (role is null) return Results.NotFound();
+
+    // Validate Name - required and trimmed
+    var trimmedName = inputRole.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate HourlyRate - must be >= 0
+    if (inputRole.HourlyRate < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "HourlyRate must be greater than or equal to 0",
+            statusCode: 400);
+    }
+
+    role.Name = trimmedName;
+    role.HourlyRate = inputRole.HourlyRate;
+
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+app.MapDelete("/api/roles/{id}", async (int id, CakeDbContext db) =>
+{
+    if (await db.Roles.FindAsync(id) is Role role)
+    {
+        db.Roles.Remove(role);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+    return Results.NotFound();
+});
+
 // Pricing constants - these would ideally come from configuration or database
 // Cost per square inch of cake base
 const decimal CostPerSquareInch = 0.50m;
