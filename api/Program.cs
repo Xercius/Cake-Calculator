@@ -50,6 +50,26 @@ app.MapGet("/api/ingredients/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/ingredients", async (Ingredient ingredient, CakeDbContext db) =>
 {
+    // Validate Name - required and trimmed
+    var trimmedName = ingredient.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate CostPerUnit - must be >= 0
+    if (ingredient.CostPerUnit < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "CostPerUnit must be greater than or equal to 0",
+            statusCode: 400);
+    }
+
+    ingredient.Name = trimmedName;
     db.Ingredients.Add(ingredient);
     await db.SaveChangesAsync();
     return Results.Created($"/api/ingredients/{ingredient.Id}", ingredient);
@@ -60,7 +80,26 @@ app.MapPut("/api/ingredients/{id}", async (int id, Ingredient inputIngredient, C
     var ingredient = await db.Ingredients.FindAsync(id);
     if (ingredient is null) return Results.NotFound();
 
-    ingredient.Name = inputIngredient.Name;
+    // Validate Name - required and trimmed
+    var trimmedName = inputIngredient.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate CostPerUnit - must be >= 0
+    if (inputIngredient.CostPerUnit < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "CostPerUnit must be greater than or equal to 0",
+            statusCode: 400);
+    }
+
+    ingredient.Name = trimmedName;
     ingredient.CostPerUnit = inputIngredient.CostPerUnit;
 
     await db.SaveChangesAsync();
@@ -89,6 +128,48 @@ app.MapGet("/api/templates/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/templates", async (Template template, CakeDbContext db) =>
 {
+    // Validate Name - required and trimmed
+    var trimmedName = template.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate Size - required and trimmed
+    var trimmedSize = template.Size?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedSize))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Size is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate Type - required and trimmed
+    var trimmedType = template.Type?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedType))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Type is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate BaseIngredients - required
+    if (string.IsNullOrWhiteSpace(template.BaseIngredients))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "BaseIngredients is required and cannot be empty",
+            statusCode: 400);
+    }
+
+    template.Name = trimmedName;
+    template.Size = trimmedSize;
+    template.Type = trimmedType;
     db.Templates.Add(template);
     await db.SaveChangesAsync();
     return Results.Created($"/api/templates/{template.Id}", template);
@@ -99,9 +180,48 @@ app.MapPut("/api/templates/{id}", async (int id, Template inputTemplate, CakeDbC
     var template = await db.Templates.FindAsync(id);
     if (template is null) return Results.NotFound();
 
-    template.Name = inputTemplate.Name;
-    template.Size = inputTemplate.Size;
-    template.Type = inputTemplate.Type;
+    // Validate Name - required and trimmed
+    var trimmedName = inputTemplate.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedName))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Name is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate Size - required and trimmed
+    var trimmedSize = inputTemplate.Size?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedSize))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Size is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate Type - required and trimmed
+    var trimmedType = inputTemplate.Type?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedType))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "Type is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+
+    // Validate BaseIngredients - required
+    if (string.IsNullOrWhiteSpace(inputTemplate.BaseIngredients))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "BaseIngredients is required and cannot be empty",
+            statusCode: 400);
+    }
+
+    template.Name = trimmedName;
+    template.Size = trimmedSize;
+    template.Type = trimmedType;
     template.BaseIngredients = inputTemplate.BaseIngredients;
 
     await db.SaveChangesAsync();
