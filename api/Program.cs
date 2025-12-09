@@ -39,6 +39,80 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
+// Validation helpers
+static IResult? ValidateRequiredString(string? value, string fieldName, out string? trimmedValue)
+{
+    trimmedValue = value?.Trim();
+    if (string.IsNullOrWhiteSpace(trimmedValue))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: $"{fieldName} is required and cannot be empty or whitespace",
+            statusCode: 400);
+    }
+    return null;
+}
+
+static IResult? ValidateNonNegativeDecimal(decimal value, string fieldName)
+{
+    if (value < 0)
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: $"{fieldName} must be greater than or equal to 0",
+            statusCode: 400);
+    }
+    return null;
+}
+
+static IResult? ValidateIngredient(string? name, decimal costPerUnit, out string? trimmedName)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null) return nameValidation;
+
+    return ValidateNonNegativeDecimal(costPerUnit, "CostPerUnit");
+}
+
+static IResult? ValidateTemplate(string? name, string? size, string? type, string? baseIngredients,
+    out string? trimmedName, out string? trimmedSize, out string? trimmedType)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null)
+    {
+        trimmedSize = null;
+        trimmedType = null;
+        return nameValidation;
+    }
+
+    var sizeValidation = ValidateRequiredString(size, "Size", out trimmedSize);
+    if (sizeValidation != null)
+    {
+        trimmedType = null;
+        return sizeValidation;
+    }
+
+    var typeValidation = ValidateRequiredString(type, "Type", out trimmedType);
+    if (typeValidation != null) return typeValidation;
+
+    if (string.IsNullOrWhiteSpace(baseIngredients))
+    {
+        return Results.Problem(
+            title: "Validation failed",
+            detail: "BaseIngredients is required and cannot be empty",
+            statusCode: 400);
+    }
+
+    return null;
+}
+
+static IResult? ValidateRole(string? name, decimal hourlyRate, out string? trimmedName)
+{
+    var nameValidation = ValidateRequiredString(name, "Name", out trimmedName);
+    if (nameValidation != null) return nameValidation;
+
+    return ValidateNonNegativeDecimal(hourlyRate, "HourlyRate");
+}
+
 // Ingredients CRUD
 app.MapGet("/api/ingredients", async (CakeDbContext db) =>
     await db.Ingredients.ToListAsync());
@@ -50,6 +124,10 @@ app.MapGet("/api/ingredients/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/ingredients", async (Ingredient ingredient, CakeDbContext db) =>
 {
+    var validationError = ValidateIngredient(ingredient.Name, ingredient.CostPerUnit, out var trimmedName);
+    if (validationError != null) return validationError;
+
+    ingredient.Name = trimmedName!;
     db.Ingredients.Add(ingredient);
     await db.SaveChangesAsync();
     return Results.Created($"/api/ingredients/{ingredient.Id}", ingredient);
@@ -60,7 +138,10 @@ app.MapPut("/api/ingredients/{id}", async (int id, Ingredient inputIngredient, C
     var ingredient = await db.Ingredients.FindAsync(id);
     if (ingredient is null) return Results.NotFound();
 
-    ingredient.Name = inputIngredient.Name;
+    var validationError = ValidateIngredient(inputIngredient.Name, inputIngredient.CostPerUnit, out var trimmedName);
+    if (validationError != null) return validationError;
+
+    ingredient.Name = trimmedName!;
     ingredient.CostPerUnit = inputIngredient.CostPerUnit;
 
     await db.SaveChangesAsync();
@@ -89,6 +170,13 @@ app.MapGet("/api/templates/{id}", async (int id, CakeDbContext db) =>
 
 app.MapPost("/api/templates", async (Template template, CakeDbContext db) =>
 {
+    var validationError = ValidateTemplate(template.Name, template.Size, template.Type, template.BaseIngredients,
+        out var trimmedName, out var trimmedSize, out var trimmedType);
+    if (validationError != null) return validationError;
+
+    template.Name = trimmedName!;
+    template.Size = trimmedSize!;
+    template.Type = trimmedType!;
     db.Templates.Add(template);
     await db.SaveChangesAsync();
     return Results.Created($"/api/templates/{template.Id}", template);
@@ -99,9 +187,13 @@ app.MapPut("/api/templates/{id}", async (int id, Template inputTemplate, CakeDbC
     var template = await db.Templates.FindAsync(id);
     if (template is null) return Results.NotFound();
 
-    template.Name = inputTemplate.Name;
-    template.Size = inputTemplate.Size;
-    template.Type = inputTemplate.Type;
+    var validationError = ValidateTemplate(inputTemplate.Name, inputTemplate.Size, inputTemplate.Type, inputTemplate.BaseIngredients,
+        out var trimmedName, out var trimmedSize, out var trimmedType);
+    if (validationError != null) return validationError;
+
+    template.Name = trimmedName!;
+    template.Size = trimmedSize!;
+    template.Type = trimmedType!;
     template.BaseIngredients = inputTemplate.BaseIngredients;
 
     await db.SaveChangesAsync();
@@ -331,6 +423,52 @@ app.MapPost("/api/frostings", async (Frosting frosting, CakeDbContext db) =>
     db.Frostings.Add(frosting);
     await db.SaveChangesAsync();
     return Results.Created($"/api/frostings/{frosting.Id}", frosting);
+});
+
+// Roles CRUD
+app.MapGet("/api/roles", async (CakeDbContext db) =>
+    await db.Roles.ToListAsync());
+
+app.MapGet("/api/roles/{id}", async (int id, CakeDbContext db) =>
+    await db.Roles.FindAsync(id) is Role role
+        ? Results.Ok(role)
+        : Results.NotFound());
+
+app.MapPost("/api/roles", async (Role role, CakeDbContext db) =>
+{
+    var validationError = ValidateRole(role.Name, role.HourlyRate, out var trimmedName);
+    if (validationError != null) return validationError;
+
+    role.Name = trimmedName!;
+    db.Roles.Add(role);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/roles/{role.Id}", role);
+});
+
+app.MapPut("/api/roles/{id}", async (int id, Role inputRole, CakeDbContext db) =>
+{
+    var role = await db.Roles.FindAsync(id);
+    if (role is null) return Results.NotFound();
+
+    var validationError = ValidateRole(inputRole.Name, inputRole.HourlyRate, out var trimmedName);
+    if (validationError != null) return validationError;
+
+    role.Name = trimmedName!;
+    role.HourlyRate = inputRole.HourlyRate;
+
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+app.MapDelete("/api/roles/{id}", async (int id, CakeDbContext db) =>
+{
+    if (await db.Roles.FindAsync(id) is Role role)
+    {
+        db.Roles.Remove(role);
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+    return Results.NotFound();
 });
 
 // Pricing constants - these would ideally come from configuration or database
