@@ -584,3 +584,6 @@ app.MapPost("/api/pricing/preview", async (PricingPreviewRequest request, CakeDb
 });
 
 app.Run();
+
+// Make Program accessible for testing
+public partial class Program { }
