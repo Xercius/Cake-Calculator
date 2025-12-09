@@ -17,6 +17,7 @@ public class CakeDbContext : DbContext
     public DbSet<CakeSize> CakeSizes { get; set; }
     public DbSet<Filling> Fillings { get; set; }
     public DbSet<Frosting> Frostings { get; set; }
+    public DbSet<Role> Roles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -86,6 +87,13 @@ public class CakeDbContext : DbContext
             entity.Property(e => e.Name).IsRequired();
         });
 
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired();
+            entity.Property(e => e.HourlyRate).HasColumnType("decimal(18,2)");
+        });
+
         // Seed data
         SeedData(modelBuilder);
     }
@@ -133,6 +141,13 @@ public class CakeDbContext : DbContext
             new Frosting { Id = 3, Name = "Chocolate", SortOrder = 3, IsActive = true },
             new Frosting { Id = 4, Name = "Fondant", SortOrder = 4, IsActive = true },
             new Frosting { Id = 5, Name = "Whipped Cream", SortOrder = 5, IsActive = true }
+        );
+
+        // Seed Roles
+        modelBuilder.Entity<Role>().HasData(
+            new Role { Id = 1, Name = "Baker", HourlyRate = 25.00m },
+            new Role { Id = 2, Name = "Decorator", HourlyRate = 30.00m },
+            new Role { Id = 3, Name = "Delivery", HourlyRate = 20.00m }
         );
     }
 }
