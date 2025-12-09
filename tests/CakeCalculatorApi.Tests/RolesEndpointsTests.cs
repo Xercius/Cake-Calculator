@@ -13,6 +13,7 @@ namespace CakeCalculatorApi.Tests;
 public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
+    private const int NonExistentRoleId = 99999;
 
     public RolesEndpointsTests(WebApplicationFactory<Program> factory)
     {
@@ -23,14 +24,19 @@ public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
                 // Remove the existing DbContext registration
                 services.RemoveAll(typeof(DbContextOptions<CakeDbContext>));
                 
-                // Create an in-memory SQLite connection that stays open
+                // Create a singleton in-memory SQLite connection
+                // The connection must stay open for the lifetime of the in-memory database
                 var connection = new SqliteConnection("DataSource=:memory:");
                 connection.Open();
                 
+                // Register the connection as a singleton so it persists
+                services.AddSingleton(connection);
+                
                 // Add DbContext with in-memory SQLite
-                services.AddDbContext<CakeDbContext>(options =>
+                services.AddDbContext<CakeDbContext>((serviceProvider, options) =>
                 {
-                    options.UseSqlite(connection);
+                    var sqliteConnection = serviceProvider.GetRequiredService<SqliteConnection>();
+                    options.UseSqlite(sqliteConnection);
                 });
                 
                 // Build the service provider
@@ -169,7 +175,6 @@ public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // Arrange
         var client = _factory.CreateClient();
-        var nonExistentId = 99999;
         var updatedRole = new Role
         {
             Name = "Updated Name",
@@ -177,7 +182,7 @@ public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         // Act
-        var response = await client.PutAsJsonAsync($"/api/roles/{nonExistentId}", updatedRole);
+        var response = await client.PutAsJsonAsync($"/api/roles/{NonExistentRoleId}", updatedRole);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -215,10 +220,9 @@ public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     {
         // Arrange
         var client = _factory.CreateClient();
-        var nonExistentId = 99999;
 
         // Act
-        var response = await client.DeleteAsync($"/api/roles/{nonExistentId}");
+        var response = await client.DeleteAsync($"/api/roles/{NonExistentRoleId}");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
