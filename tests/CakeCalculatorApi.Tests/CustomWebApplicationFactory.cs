@@ -8,7 +8,7 @@ using CakeCalculatorApi.Data;
 
 namespace CakeCalculatorApi.Tests;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IDisposable
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private SqliteConnection? _connection;
 
@@ -40,7 +40,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IDisp
     {
         if (disposing)
         {
-            _connection?.Close();
             _connection?.Dispose();
         }
         base.Dispose(disposing);
