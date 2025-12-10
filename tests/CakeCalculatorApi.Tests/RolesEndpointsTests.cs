@@ -10,48 +10,26 @@ using CakeCalculatorApi.Models;
 
 namespace CakeCalculatorApi.Tests;
 
-public class RolesEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class RolesEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly CustomWebApplicationFactory _factory;
     private const int NonExistentRoleId = 99999;
 
-    public RolesEndpointsTests(WebApplicationFactory<Program> factory)
+    public RolesEndpointsTests(CustomWebApplicationFactory factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                // Remove the existing DbContext registration
-                services.RemoveAll(typeof(DbContextOptions<CakeDbContext>));
-                
-                // Create a singleton in-memory SQLite connection
-                // The connection must stay open for the lifetime of the in-memory database
-                var connection = new SqliteConnection("DataSource=:memory:");
-                connection.Open();
-                
-                // Register the connection as a singleton so it persists
-                services.AddSingleton(connection);
-                
-                // Add DbContext with in-memory SQLite
-                services.AddDbContext<CakeDbContext>((serviceProvider, options) =>
-                {
-                    var sqliteConnection = serviceProvider.GetRequiredService<SqliteConnection>();
-                    options.UseSqlite(sqliteConnection);
-                });
-                
-                // Build the service provider
-                var sp = services.BuildServiceProvider();
-                
-                // Create a scope to obtain a reference to the database context
-                using var scope = sp.CreateScope();
-                var scopedServices = scope.ServiceProvider;
-                var db = scopedServices.GetRequiredService<CakeDbContext>();
-                
-                // Ensure the database is created
-                db.Database.EnsureCreated();
-            });
-        });
+        _factory = factory;
     }
+
+    public async Task InitializeAsync()
+    {
+        // Clean database before each test to ensure isolation
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<CakeDbContext>();
+        await db.Database.EnsureDeletedAsync();
+        await db.Database.EnsureCreatedAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task CreateRole_WithValidData_Returns201AndPersists()
