@@ -111,3 +111,9 @@ export interface SelectionState {
   fillingId?: string;
   frostingId?: string;
 }
+
+export interface Role {
+  id: number;
+  name: string;
+  hourlyRate: number;
+}

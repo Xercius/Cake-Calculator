@@ -9,7 +9,8 @@ import type {
   Filling,
   Frosting,
   PricingPreviewRequest,
-  PricingPreviewResponse
+  PricingPreviewResponse,
+  Role
 } from '../types';
 
 const API_BASE = '/api';
@@ -181,4 +182,43 @@ export const getPricingPreview = async (request: PricingPreviewRequest): Promise
   });
   if (!response.ok) throw new Error('Failed to get pricing preview');
   return response.json();
+};
+
+// Roles API
+export const getRoles = async (): Promise<Role[]> => {
+  const response = await fetch(`${API_BASE}/roles`);
+  if (!response.ok) throw new Error('Failed to fetch roles');
+  return response.json();
+};
+
+export const getRole = async (id: number): Promise<Role> => {
+  const response = await fetch(`${API_BASE}/roles/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch role');
+  return response.json();
+};
+
+export const createRole = async (role: Omit<Role, 'id'>): Promise<Role> => {
+  const response = await fetch(`${API_BASE}/roles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(role),
+  });
+  if (!response.ok) throw new Error('Failed to create role');
+  return response.json();
+};
+
+export const updateRole = async (id: number, role: Omit<Role, 'id'>): Promise<void> => {
+  const response = await fetch(`${API_BASE}/roles/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(role),
+  });
+  if (!response.ok) throw new Error('Failed to update role');
+};
+
+export const deleteRole = async (id: number): Promise<void> => {
+  const response = await fetch(`${API_BASE}/roles/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete role');
 };
