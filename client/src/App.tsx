@@ -5,6 +5,7 @@ import TemplatesPage from './pages/TemplatesPage';
 import CakesPage from './pages/CakesPage';
 import PriceSummaryPage from './pages/PriceSummaryPage';
 import NewOrderPage from './pages/NewOrderPage';
+import RolesPage from './pages/RolesPage';
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,16 @@ function Navigation() {
                 Cakes
               </Link>
               <Link
+                to="/roles"
+                className={`py-5 px-3 ${
+                  location.pathname === '/roles'
+                    ? 'text-blue-600 border-b-4 border-blue-600'
+                    : 'text-gray-500 hover:text-blue-600'
+                } transition duration-300`}
+              >
+                Roles
+              </Link>
+              <Link
                 to="/pricing"
                 className={`py-5 px-3 ${
                   location.pathname === '/pricing'
@@ -94,6 +105,7 @@ function App() {
               <Route path="/" element={<IngredientsPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/cakes" element={<CakesPage />} />
+              <Route path="/roles" element={<RolesPage />} />
               <Route path="/pricing" element={<PriceSummaryPage />} />
               <Route path="/new" element={<NewOrderPage />} />
             </Routes>
